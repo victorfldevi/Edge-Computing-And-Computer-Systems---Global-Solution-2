@@ -1,0 +1,174 @@
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
+
+// Define the pins that serve as input and output.
+#define fastPin 18
+#define leanPin 19
+#define safePin 23
+#define resetPin 26
+#define buzzerPin 25
+
+// Define variables that will be controlled by the sensors.
+Adafruit_MPU6050 m_p_u;
+sensors_event_t acc, gcc, temp;
+
+// Define variables that will count elapsed time, in milliseconds.
+int groundTime;
+int safeTime;
+
+// Define booleans that will change acordingly with the sensor's values.
+bool fast;
+bool lean;
+bool safe;
+
+// Define variables that represents the device's position since it started. 
+float posX;
+float posY;
+float posZ;
+
+// Code that runs before loop, only runs once.
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(fastPin, OUTPUT);
+  pinMode(leanPin, OUTPUT);
+  pinMode(safePin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(resetPin, INPUT);
+
+  while(!Serial)
+  delay(20);
+  if(!m_p_u.begin()){
+    while(1){
+      delay(20);
+    }
+  }
+}
+
+// Code that runs as long as the device is turned on, runs multiple times.
+void loop() {
+
+  // Set the sensor values into its respective variables.
+  m_p_u.getEvent(&acc, &gcc, &temp);
+
+  // Sums the acceleration on each direction, so we can have the device's position
+  posX += acc.acceleration.x;
+  posY += acc.acceleration.y;
+  posZ += acc.acceleration.z;
+
+  // Checks if the tresholds have been exceeded.
+  checkIfUp();
+
+  // If the reset button has been pressed, both variables reset
+  if (digitalRead(resetPin) == HIGH)
+  {
+    lean = false;
+    fast = false;
+  }
+
+  // Prints all sensor's values on console, for better visualization
+  Serial.println();
+  Serial.print("Acceleration:");
+  Serial.print(" X ");
+  Serial.print(acc.acceleration.x);
+  Serial.print(" Y ");
+  Serial.print(acc.acceleration.y);
+  Serial.print(" Z ");
+  Serial.print(acc.acceleration.z);
+  Serial.print(" meters per second");
+  Serial.println();
+  Serial.print("Rotation:");
+  Serial.print(" X ");
+  Serial.print((gcc.gyro.x)*180/3.14);
+  Serial.print(" Y ");
+  Serial.print((gcc.gyro.y)*180/3.14);
+  Serial.print(" Z ");
+  Serial.print((gcc.gyro.z)*180/3.14);
+  Serial.print(" degrees");
+  Serial.println();
+  Serial.print("Position:");
+  Serial.print(" X ");
+  Serial.print(posX);
+  Serial.print(" Y ");
+  Serial.print(posY);
+  Serial.print(" Z ");
+  Serial.print(posZ);
+  Serial.print(" meters");
+  Serial.println();
+
+  // If the device detects that the person is not leaning and its above the ground,
+  // after 10 seconds, the new Y position will be the current one.
+  if (!lean && abs(posY) > 1 && !safe)
+  {
+    if (groundTime >= 10000)
+    {
+      posY = 0;
+      groundTime = 0;
+    }
+    groundTime += 1000;
+  }
+  else
+  {
+    groundTime = 0;
+  }
+
+
+  // If the device detects that the person is leaning and its above the ground by
+  // 1 meter, it detects that the person is in a couch or bed, and enables the safe led
+  if(posY > 1 && lean)
+  {
+    if(safeTime >= 3000)
+    {
+      safe = true;
+      safeTime = 0;
+      digitalWrite(safePin, HIGH);
+    }
+    safeTime += 1000;
+  }
+  else
+  {
+    safe = false;
+    safeTime = 0;
+    digitalWrite(safePin, LOW);
+  }
+  delay(1000);
+
+}
+
+// Detects if the person is standing
+void checkIfUp()
+{
+  // If the person is not leaning or moving fast and not safe, it tracks the fast
+  // and lean values, as well as the leds and buzzer
+  if(!lean || !fast && !safe)
+  {
+    digitalWrite(buzzerPin, LOW);
+
+    if(abs((gcc.gyro.x)*180/3.14) > 30 || abs((gcc.gyro.y)*180/3.14) > 30 || abs((gcc.gyro.z)*180/3.14) > 30)
+    {
+      lean = true;
+      digitalWrite(leanPin, HIGH);
+    }
+    else
+    {
+      lean = false;
+      digitalWrite(leanPin, LOW);
+    }
+
+    if(abs(acc.acceleration.x) > 0.5 || abs(acc.acceleration.y) > 0.5 || abs(acc.acceleration.z) > 0.3)
+    {
+      fast = true;
+      digitalWrite(fastPin, HIGH);
+    }
+    else
+    {
+      fast = false;
+      digitalWrite(fastPin, LOW);
+    }
+  }
+  else // Otherwise, it means the person has falled and turns on the buzzer.
+  {
+    digitalWrite(buzzerPin, HIGH);
+  }
+}
