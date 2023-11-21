@@ -1,5 +1,7 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
+#include <WiFi.h>
+#include <PubSubClient.h>
 #include <Wire.h>
 
 // Define the pins that serve as input and output.
@@ -8,6 +10,20 @@
 #define safePin 23
 #define resetPin 26
 #define buzzerPin 25
+
+// Wifi configs
+const char *SSID = "Wokwi-GUEST";
+const char *PASSWORD = "";
+
+// MQTT configs
+const char *BROKER_MQTT = "broker.hivemq.com";
+const int BROKER_PORT = 1883;
+const char *ID_MQTT = "YourNameHere";
+const char *TOPIC_PUBLISH_FELL = "SlipED/fell";
+
+// Enables MQTT 
+WiFiClient espClient;
+PubSubClient MQTT(espClient);
 
 // Define variables that will be controlled by the sensors.
 Adafruit_MPU6050 m_p_u;
@@ -22,6 +38,9 @@ bool fast;
 bool lean;
 bool safe;
 
+// Defines if the message was already sent
+bool sent = false;
+
 // Define variables that represents the device's position since it started. 
 float posX;
 float posY;
@@ -30,6 +49,10 @@ float posZ;
 // Code that runs before loop, only runs once.
 void setup() {
   Serial.begin(115200);
+
+  // Starts both WiFi and MQTT
+  WiFi.begin(SSID, PASSWORD);
+  MQTT.setServer(BROKER_MQTT, BROKER_PORT);
 
   pinMode(fastPin, OUTPUT);
   pinMode(leanPin, OUTPUT);
@@ -49,6 +72,10 @@ void setup() {
 // Code that runs as long as the device is turned on, runs multiple times.
 void loop() {
 
+  // Check if both the WiFi and MQTT Server are avaliable 
+  checkWiFiAndMQTT();
+  MQTT.loop();
+
   // Set the sensor values into its respective variables.
   m_p_u.getEvent(&acc, &gcc, &temp);
 
@@ -60,11 +87,12 @@ void loop() {
   // Checks if the tresholds have been exceeded.
   checkIfUp();
 
-  // If the reset button has been pressed, both variables reset
+  // If the reset button has been pressed, lean, fast and sent variables are reset
   if (digitalRead(resetPin) == HIGH)
   {
     lean = false;
     fast = false;
+    sent = false;
   }
 
   // Prints all sensor's values on console, for better visualization
@@ -132,6 +160,15 @@ void loop() {
     safeTime = 0;
     digitalWrite(safePin, LOW);
   }
+
+  // If a fall was detected, send a warning message trought MQTT to SlipED/fell
+  if (lean && fast && !sent) 
+  {
+    sent = true;
+    char msgContent[] = "Our device detected a fall, please check the person using this device right now!";
+    MQTT.publish(TOPIC_PUBLISH_FELL, msgContent);
+  }
+
   delay(1000);
 
 }
@@ -170,5 +207,28 @@ void checkIfUp()
   else // Otherwise, it means the person has falled and turns on the buzzer.
   {
     digitalWrite(buzzerPin, HIGH);
+  }
+}
+
+void checkWiFiAndMQTT() 
+{
+  if (WiFi.status() != WL_CONNECTED) reconnectWiFi();
+    if (!MQTT.connected()) reconnectMQTT();
+}
+
+void reconnectWiFi() {
+  if (WiFi.status() == WL_CONNECTED)
+    return;
+
+  WiFi.begin(SSID, PASSWORD); // Conecta na rede WI-FI
+}
+
+void reconnectMQTT() {
+  while (!MQTT.connected()) {
+    if (MQTT.connect(ID_MQTT)) {
+      MQTT.subscribe(TOPIC_PUBLISH_FELL);
+    } else {
+      delay(2000);
+    }
   }
 }
