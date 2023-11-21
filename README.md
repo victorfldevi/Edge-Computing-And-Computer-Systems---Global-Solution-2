@@ -1,5 +1,11 @@
 # Edge-Computing-And-Computer-Systems---Global-Solution-2
 
+Integrantes:
+
+ - Lorenzo Gomes Andreata - RM 551117
+ - Victor Flávio Demarchi Viana - RM 99389
+
+
 Descrição do Problema:
 
 	Quedas podem gerar diversos problemas para qualquer pessoa, porém são intensificadas para pessoas idosas ou que possuem alguma dificuldade de locomoção, já que por seus corpos serem mais frágeis podem ter consequencias mais severas devido ao impacto, ou mesmo não conseguir se levantar após isso, necessitando que alguém os levante.
@@ -16,7 +22,7 @@ Acesso:
 
 - https://wokwi.com/projects/381855169899866113
 
-	Outra opção é baixar os arquivos presentes no repositório e, na aba "sketch.ino", copiar e colar o conteúdo presente no arquivo "Code.txt", na aba "diagram.json", copiar e colar o conteúdo presente no arquivo "Json.txt", na aba "Library Manager", copiar o conteúdo presente no arquivo "Libraries.txt", clicar no "+" em "Project Libraries", colar e selecionar a biblioteca com o mesmo nome do conteúdo colado.
+	Outra opção é baixar os arquivos presentes no repositório e, na aba "sketch.ino", copiar e colar o conteúdo presente no arquivo "Code.txt", na aba "diagram.json", copiar e colar o conteúdo presente no arquivo "Json.txt", na aba "Library Manager", copiar cada linha do conteúdo presente no arquivo "Libraries.txt", clicar no "+" em "Project Libraries", colar e selecionar a biblioteca com o mesmo nome do conteúdo colado.
 
 	Usando qualquer um dos metodos, você terá uma cópia exata do protótipo desenvolvido para demonstrar a idéia.
 
